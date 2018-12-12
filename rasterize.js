@@ -3,8 +3,12 @@
 /* assignment specific globals */
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 20;
-const INPUT_TRIANGLES_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/models.json"; // triangles file loc
-const BASE_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/";
+var INPUT_TRIANGLES_URL = "http://127.0.0.1/CG_PROG_5/models.json"; // triangles file loc
+var BASE_URL = "http://127.0.0.1/CG_PROG_5/";
+
+INPUT_TRIANGLES_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/models.json"; // triangles file loc
+BASE_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/";
+
 var defaultEye = vec3.fromValues(0.5,0.5,-0.5); // default eye position in world space
 var defaultCenter = vec3.fromValues(0.5,0.5,0.5); // default view direction in world space
 var defaultUp = vec3.fromValues(0,1,0); // default view up vector
@@ -107,6 +111,7 @@ var timers = [];
 var lightPositionULoc;
 
 var MOVE_FRAME = 4;
+var SLITHER_RESET_FRAME = 10;
 
 var isP1Win;
 var isP2Win;
@@ -762,6 +767,7 @@ function getRandGridLoc() {
 }
 
 function Segment(i, j, isP, isP2, isHead, avoidSpawn) {
+  this.childNum = 0;
   const UP = 0;
   const RIGHT = 3;
   const DOWN = 2;
@@ -772,6 +778,7 @@ function Segment(i, j, isP, isP2, isHead, avoidSpawn) {
   this.j = j;
   this.i = i;
   this.isHead = false;
+  this.slitherFrame = 0;
   if (isHead) {
     this.isHead = true;
   }
@@ -879,6 +886,16 @@ else {
       var translate = this.model.translation;
       vec3.set(translate, translate[0] - this.jDir * 0.005, translate[1] - this.iDir * 0.002, translate[2]);
     }
+    else {
+      var translate = this.model.translation;
+      var slither = vec3.create();
+      
+      var slitherAmount = Math.sin(2*Math.PI / (SLITHER_RESET_FRAME) * (this.slitherFrame + this.childNum)) * this.frameNum / 40;
+      gridToCoord(slither,  this.jDir * slitherAmount, this.iDir * slitherAmount);
+      translate[0] += slither[0];
+      translate[1] += slither[1];
+      this.slitherFrame++;
+    }
     if (this.frameNum >= MOVE_FRAME) {
       this.frameNum = 0;
       this.changeLoc();
@@ -983,14 +1000,14 @@ else {
   this.dangerRight = function() {return this.dangerAhead(0, -1);};
   
   this.deleteSnake= function() {
-    this.deleteSegments();
+    //this.deleteSegments();
     for (var i = 0; i < modelInstances.length; i++) {
       if(modelInstances[i].name === "snake3" || modelInstances[i].name === "snakehead3" || modelInstances[i].name === "snaketail3") {
         modelInstances.splice(i, 1);
         i--;
       }
     }
-    spawnEnemy();
+    //spawnEnemy();
   }
   this.deleteSegments = function() {
     this.model = null;
@@ -1105,7 +1122,7 @@ else {
           }
         }
         else {
-          this.deleteSnake();
+          explodeEnemy();
         }
         return;
       }
@@ -1137,6 +1154,7 @@ else {
     }
     else {
       this.child = new Segment(this.i - 1, this.j, this.isPlayer, this.isP2, false);
+      this.child.childNum = this.childNum + 2;
       var childModel = this.child.model;
       if (this.isHead) {
         this.child.model.material.alpha = 0.0;
@@ -1221,6 +1239,31 @@ function explodeP2() {
     else if (isP1Win) {
       p1Win.material.alpha = 1.0;
     }
+  }
+}
+
+var expESeg = null;
+function explodeEnemy() {
+  if (expESeg == null) {
+    expESeg = enemyHead;
+  }
+  else {
+    expESeg.model.material.alpha = 0.0;
+    grid[expESeg.i][expESeg.j] = null;
+    expESeg = expESeg.child;
+  }
+  if (expESeg != null) {
+    audio_explode.currentTime = 0;
+    audio_explode.play();
+    expESeg.model.material.ambient = [1.0, 1.0, 1.0];
+    expESeg.model.material.diffuse = [1.0, 1.0, 1.0];
+    expESeg.model.material.specular = [1.0, 1.0, 1.0];
+    expESeg.isExploding = true;
+    timers.push(setTimeout(explodeEnemy, 300));
+  }
+  else {
+    enemyHead.deleteSnake();
+    spawnEnemy();
   }
 }
 
