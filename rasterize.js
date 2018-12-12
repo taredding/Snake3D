@@ -530,8 +530,10 @@ function createModelInstance(name, i, j) {
   var nextLen = modelInstances.length;
   set.instanceNumber = nextLen;
   set.translation = loc;
-  set.material = Object.assign({}, oldSet.material);;
-  
+  set.material = Object.assign({}, oldSet.material);
+  set.material.ambient = oldSet.material.ambient.slice();
+  set.material.diffuse = oldSet.material.diffuse.slice();
+  set.material.specular = oldSet.material.specular.slice();
   set.yAxis = vec3.fromValues(0, 1, 0);
   set.xAxis = vec3.fromValues(1, 0, 0);
   
@@ -585,6 +587,17 @@ function setUpBoard() {
       if (i == 0 || j == 0 || i == GRID_WIDTH - 1 || j == GRID_WIDTH - 1) {
         wall = "wall";
         var next = createModelInstance("wall", i, j);
+        
+        var ambFlex = -0.6 + (Math.random());
+        next.material.ambient[0] += ambFlex / 2.0;
+        next.material.ambient[1] += ambFlex / 2.0;
+        next.material.ambient[2] += ambFlex / 2.0;
+        next.material.diffuse[0] += ambFlex;
+        next.material.diffuse[1] += ambFlex;
+        next.material.diffuse[2] += ambFlex;
+        next.material.specular[0] += ambFlex;
+        next.material.specular[1] += ambFlex;
+        next.material.specular[2] += ambFlex;
         var rand = Math.random()/15.0;
         next.translation[2] += rand;
       }
@@ -594,16 +607,52 @@ function setUpBoard() {
   createModelInstance("wall", 5, 5);
   grid[5][5] = "wall";
   var temp = createModelInstance("wall", 5, 5);
-  temp.translation[2] -= 0.1; 
-  createModelInstance("wall", 14, 14);
+  temp.translation[2] -= 0.075;
+    var rotato = mat4.create();
+  mat4.fromRotation(rotato, (Math.PI/4), vec3.fromValues(0, 0, 1));
+  vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
+  vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
+  mat4.fromRotation(rotato, (Math.PI/2), vec3.fromValues(1, 0, 0));
+  vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
+  vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
+  temp = createModelInstance("wall", 14, 14);
+  temp.translation[2] += 0.05;
   temp = createModelInstance("wall", 14, 14);
   grid[14][14] = "wall";
-  temp.translation[2] -= 0.1; 
+  temp.translation[2] -= 0.05;
+  
+  temp = createModelInstance("wall", 8, 10);
+  temp.translation[2] += 0.05;
+  grid[8][10] = "wall";
+  
+  temp = createModelInstance("wall", 8, 12);
+  temp.translation[2] += 0.05;
+  grid[8][12] = "wall";
+  
+  temp = createModelInstance("wall", 8, 11);
+  mat4.fromRotation(rotato, (Math.PI/2), vec3.fromValues(0, 1, 0));
+  vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
+  vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
+  
+  mat4.fromRotation(rotato, (Math.PI/6), vec3.fromValues(1, 0, 0));
+  vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
+  vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
+  temp.translation[2] -= 0.025;
+  
+  temp = createModelInstance("wall", 15, 3);
+  temp.translation[2] += 0.05;
+  grid[15][3] = "wall";
+  
+  temp = createModelInstance("wall", 14, 2);
+  temp.translation[2] += 0.05;
+  grid[14][2] = "wall";
+  
+  
   if (is2Player) {
     dynamicCamera = false;
     Eye = vec3.clone(defaultEye);
     Center = vec3.clone(defaultCenter);
-    player2 = new Segment(4, 12, true, true, true);
+    player2 = new Segment(4, 13, true, true, true);
     player2.isHead = true;
     player2.addChild();
     player2.addChild();
