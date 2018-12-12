@@ -3,8 +3,8 @@
 /* assignment specific globals */
 const GRID_WIDTH = 20;
 const GRID_HEIGHT = 20;
-const INPUT_TRIANGLES_URL = "http://127.0.0.1/CG_PROG_5/models.json"; // triangles file loc
-const BASE_URL = "http://127.0.0.1/CG_PROG_5/";
+const INPUT_TRIANGLES_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/models.json"; // triangles file loc
+const BASE_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/";
 var defaultEye = vec3.fromValues(0.5,0.5,-0.5); // default eye position in world space
 var defaultCenter = vec3.fromValues(0.5,0.5,0.5); // default view direction in world space
 var defaultUp = vec3.fromValues(0,1,0); // default view up vector
