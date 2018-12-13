@@ -6,8 +6,8 @@ const GRID_HEIGHT = 20;
 var INPUT_TRIANGLES_URL = "http://127.0.0.1/CG_PROG_5/models.json"; // triangles file loc
 var BASE_URL = "http://127.0.0.1/CG_PROG_5/";
 
-INPUT_TRIANGLES_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/models.json"; // triangles file loc
-BASE_URL = "https://pages.github.ncsu.edu/tareddin/snake-game/";
+INPUT_TRIANGLES_URL = "https://taredding.github.io/Snake3D/models.json"; // triangles file loc
+BASE_URL = "https://taredding.github.io/Snake3D/";
 
 var defaultEye = vec3.fromValues(0.5,0.5,-0.5); // default eye position in world space
 var defaultCenter = vec3.fromValues(0.5,0.5,0.5); // default view direction in world space
@@ -110,8 +110,11 @@ var timers = [];
 
 var lightPositionULoc;
 
-var MOVE_FRAME = 4;
+const DEF_MOVE_FRAME = 4;
+var MOVE_FRAME = DEF_MOVE_FRAME;
 var SLITHER_RESET_FRAME = 10;
+var gameSpeed = 1.0;
+var speedSlider = document.getElementById("speed");
 
 var isP1Win;
 var isP2Win;
@@ -548,7 +551,10 @@ function setUpBoard() {
   slowDown = false;
   isP1Win = false;
   isP2Win = false;
-  MOVE_FRAME = 4;
+
+  MOVE_FRAME = 10 - speedSlider.value;
+  SLITHER_RESET_FRAME = 30;
+  gameSpeed = DEF_MOVE_FRAME / MOVE_FRAME;
   expP1Seg = null;
   expP2Seg = null;
   for (var i = 0; i < timers.length; i++) {
@@ -711,7 +717,7 @@ function Apple() {
     gridToCoord(this.model.translation, this.i, this.j);
     gridToCoord(this.shadow.translation, this.i, this.j);
   }
-  this.frameNum = 0;
+  this.frameNum = Math.floor(Math.random() * 60);
   this.update = function() {
     
     var rotato = mat4.create();
@@ -719,7 +725,7 @@ function Apple() {
     vec3.transformMat4(this.model.yAxis, this.model.yAxis, rotato);
     vec3.transformMat4(this.model.xAxis, this.model.xAxis, rotato);
     this.frameNum++;
-    this.model.translation[2] = -0.05 + (Math.sin(0.1 * this.frameNum) / 60);
+    this.model.translation[2] = -0.05 + (Math.sin(0.15 * this.frameNum) / 60);
     var scal = this.model.translation[2];
     rotato = mat4.create();
     vec3.set(this.shadow.yAxis, 0, 1, 0);
@@ -791,7 +797,7 @@ function PowerUp(type, num, interval) {
     
   }
   
-  this.frameNum = 0;
+  this.frameNum = Math.floor(Math.random() * 60);
   this.update = function() {
     var rotato = mat4.create();
     mat4.fromRotation(rotato, (Math.PI) * 0.01, vec3.fromValues(0, 0, 1));
@@ -873,6 +879,7 @@ else {
 }
   this.model.isP = isP;
   this.child = null;
+  this.explosionFactor = 1.0;
   this.frameNum = 0;
   this.bufferActionForce = function(dir) {
     this.nextDir = dir;
@@ -917,12 +924,16 @@ else {
   this.update = function() {
     this.frameNum++;
     if (this.isExploding) {
-      this.model.realTextureNumber = textures.length - 1 - (this.frameNum % 3);
+      this.model.realTextureNumber = textures.length - 1 - (Math.floor(gameSpeed *this.frameNum) % 3);
       if (this.model.material.alpha > 0) {
         var scaler = mat4.create();
-        mat4.fromScaling(scaler,vec3.fromValues(1.1,1.1,1.1));
+        var prevScaling = 1.0/this.explosionFactor;
+        this.explosionFactor += 0.1;
+        var nextScaling = prevScaling * this.explosionFactor;
+        mat4.fromScaling(scaler,vec3.fromValues(nextScaling, nextScaling, nextScaling));
         vec3.transformMat4(this.model.yAxis, this.model.yAxis, scaler);
         vec3.transformMat4(this.model.xAxis, this.model.xAxis, scaler);
+        this.model.translation[2] = - 0.002;
       }
       if (this.child) {
         this.child.update();
@@ -939,7 +950,7 @@ else {
       var translate = this.model.translation;
       var slither = vec3.create();
       
-      var slitherAmount = Math.sin(2*Math.PI / (SLITHER_RESET_FRAME) * (this.slitherFrame + this.childNum)) * this.frameNum / 40;
+      var slitherAmount = Math.sin(2*Math.PI / (SLITHER_RESET_FRAME) * (this.slitherFrame + 2 * this.childNum)) * this.frameNum / 40;
       gridToCoord(slither,  this.jDir * slitherAmount, this.iDir * slitherAmount);
       translate[0] += slither[0];
       translate[1] += slither[1];
@@ -1203,7 +1214,7 @@ else {
     }
     else {
       this.child = new Segment(this.i - 1, this.j, this.isPlayer, this.isP2, false);
-      this.child.childNum = this.childNum + 2;
+      this.child.childNum = this.childNum + 1;
       var childModel = this.child.model;
       if (this.isHead) {
         this.child.model.material.alpha = 0.0;
@@ -1247,7 +1258,7 @@ function explodeP1() {
     expP1Seg.model.material.diffuse = [1.0, 1.0, 1.0];
     expP1Seg.model.material.specular = [1.0, 1.0, 1.0];
     expP1Seg.isExploding = true;
-    timers.push(setTimeout(explodeP1, 300));
+    timers.push(setTimeout(explodeP1, 300 ));
   }
   else {
     if (player2 == null) {
@@ -1279,7 +1290,7 @@ function explodeP2() {
     expP2Seg.model.material.diffuse = [1.0, 1.0, 1.0];
     expP2Seg.model.material.specular = [1.0, 1.0, 1.0];
     expP2Seg.isExploding = true;
-    timers.push(setTimeout(explodeP2, 300));
+    timers.push(setTimeout(explodeP2, 300 ));
   }
   else {
     if (isP2Win) {
@@ -1689,5 +1700,4 @@ function main() {
   setupShaders(); // setup the webGL shaders
   setUpBoard();
   renderModels(); // draw the triangles using webGL
-  
 } // end main

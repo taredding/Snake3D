@@ -5,9 +5,6 @@
     <title>Prog 5: Snake </title>
     
     <link type="text/css" rel="stylesheet" href="rasterize.css">
-
-    <script type="text/javascript" src="gl-matrix-min.js"></script>
-    <script type="text/javascript" src="rasterize.js"></script>
   </head>
 
   <body onload="main();">
@@ -17,16 +14,18 @@
       </div>
       <div class="column" id="scoreboard">
         <div class="score">Player 1 Score: <label id="p1Score">0</label> <br/>Player 2 Score: <label id="p2Score">0</label></div>
-        CONTROLS: <br />
+        <br/>CONTROLS: <br />
         Player 1 Move: Arrow Keys <br/>
         Player 2 Move: TFGH <br/>
         Start 1 Player Match: Esc <br/>
         Start 2 Player Match: R <br />
         Toggle Audio: M <br />
-        Toggle Camera: C
+        Toggle Camera: C <br /> <br />
+        Game Speed: <input type="range" id="speed" min="1" max="9" value="6"> <input type="button" value="Reset Game" onclick="setUpBoard()"/>
       </div>
     </div>
   </body>
-
+    <script type="text/javascript" src="gl-matrix-min.js"></script>
+    <script type="text/javascript" src="rasterize.js"></script>
 </div>
 </html>
