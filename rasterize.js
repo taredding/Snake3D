@@ -115,6 +115,8 @@ var MOVE_FRAME = DEF_MOVE_FRAME;
 var SLITHER_RESET_FRAME = 10;
 var gameSpeed = 1.0;
 var speedSlider = document.getElementById("speed");
+var fpsIndicator = document.getElementById("fps");
+var fpsIndicatorSmooth = document.getElementById("fpsSmooth");
 
 var isP1Win;
 var isP2Win;
@@ -1545,7 +1547,24 @@ function setupShaders() {
     } // end catch
 } // end setup shaders
 
+
+var lastFPS = 0;
+var updateNum = 0;
+function updateFPS(elapsedTime) {
+  elapsedTime = elapsedTime / 1000;
+  updateNum++;
+  if (updateNum % 60 == 0) {
+    updateNum = 0;
+    fpsIndicatorSmooth.innerHTML = 1.0 / lastFPS;
+  }
+  fpsIndicator.innerHTML = 1.0 / elapsedTime;
+  lastFPS = lastFPS * 0.9 + 0.1 * elapsedTime
+  
+}
+
 // render the loaded model
+var startTime = Date.now();
+var endTime = Date.now();
 function renderModels() {
     updateGame();
     gl.uniform3fv(lightPositionULoc,lightPosition);
@@ -1643,7 +1662,7 @@ function renderModels() {
       var pvMatrix = mat4.create(); // hand * proj * view matrices
       var pvmMatrix = mat4.create(); // hand * proj * view * model matrices
       
-      window.requestAnimationFrame(renderModels); // set up frame render callback
+
       
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); // clear frame/depth buffers
       
@@ -1653,9 +1672,12 @@ function renderModels() {
       mat4.lookAt(vMatrix,Eye,Center,Up); // create view matrix
       mat4.multiply(pvMatrix,pvMatrix,pMatrix); // projection
       mat4.multiply(pvMatrix,pvMatrix,vMatrix); // projection * view
-          renderTriangles(false, true);
-    renderTriangles(true, false);
-   
+      renderTriangles(false, true);
+      renderTriangles(true, false);
+      endTime = Date.now();
+      updateFPS((endTime - startTime));
+      startTime = endTime;
+      window.requestAnimationFrame(renderModels); // set up frame render callback
     
 } // end render model
 
