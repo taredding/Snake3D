@@ -96,6 +96,8 @@ audio_pdown.muted = true;
 audio_explode = new Audio('explode.wav');
 audio_explode.muted = true;
 
+const TIME_PER_UPDATE = Math.floor(1000.0 / 60);
+
 
 var p1Score = 0;
 var p2Score = 0;
@@ -117,6 +119,9 @@ var gameSpeed = 1.0;
 var speedSlider = document.getElementById("speed");
 var fpsIndicator = document.getElementById("fps");
 var fpsIndicatorSmooth = document.getElementById("fpsSmooth");
+
+var gameUpdateIndicator = document.getElementById("gameLogicTime");
+var renderUpdateIndicator = document.getElementById("renderTime");
 
 var isP1Win;
 var isP2Win;
@@ -554,8 +559,8 @@ function setUpBoard() {
   isP1Win = false;
   isP2Win = false;
 
-  MOVE_FRAME = 10 - speedSlider.value;
-  SLITHER_RESET_FRAME = 30;
+  MOVE_FRAME = 15;
+  SLITHER_RESET_FRAME = 13;
   gameSpeed = DEF_MOVE_FRAME / MOVE_FRAME;
   expP1Seg = null;
   expP2Seg = null;
@@ -952,7 +957,7 @@ else {
       var translate = this.model.translation;
       var slither = vec3.create();
       
-      var slitherAmount = Math.sin(2*Math.PI / (SLITHER_RESET_FRAME) * (this.slitherFrame + 2 * this.childNum)) * this.frameNum / 40;
+      var slitherAmount = Math.sin((this.slitherFrame + this.childNum * 6) / (2*Math.PI)) * this.frameNum / 100;
       gridToCoord(slither,  this.jDir * slitherAmount, this.iDir * slitherAmount);
       translate[0] += slither[0];
       translate[1] += slither[1];
@@ -1465,13 +1470,7 @@ function setupShaders() {
             vec3 colorOut = vec3(ambient + diffuse + specular);
             vec4 texColor = texture2D(u_texture, uv);
             
-            if (texToggle) {
-              gl_FragColor.rgb = texColor.rgb;
-              gl_FragColor.a = texColor.a * alpha;
-            }
-            else {
-              gl_FragColor = vec4(texColor.rgb * colorOut, texColor.a * alpha);
-            }
+            gl_FragColor = vec4(texColor.rgb * colorOut, texColor.a * alpha);
             
             
         }
@@ -1555,18 +1554,48 @@ function updateFPS(elapsedTime) {
   updateNum++;
   if (updateNum % 60 == 0) {
     updateNum = 0;
-    fpsIndicatorSmooth.innerHTML = 1.0 / lastFPS;
+    var temp = 1.0 / lastFPS;
+    fpsIndicatorSmooth.innerHTML = temp.toFixed(1);
   }
-  fpsIndicator.innerHTML = 1.0 / elapsedTime;
+  var temp = 1.0/elapsedTime;
+  fpsIndicator.innerHTML = temp.toFixed(1);
   lastFPS = lastFPS * 0.9 + 0.1 * elapsedTime
   
+}
+
+
+var lastRenderTime = 0;
+var lastGameUpdateTime = 0;
+updaterNum = 0;
+function updateTimers(gameTime, renderTime) {
+  lastGameUpdateTime = 0.9 * lastGameUpdateTime + 0.1 * gameTime;
+  lastRenderTime = 0.9 * lastGameUpdateTime + 0.1 * renderTime;
+  updaterNum++;
+  if (updaterNum % 30 == 0) {
+    updaterNum = 0;
+    gameUpdateIndicator.innerHTML = lastGameUpdateTime.toFixed(5);
+    renderUpdateIndicator.innerHTML = lastRenderTime.toFixed(5);
+  }
 }
 
 // render the loaded model
 var startTime = Date.now();
 var endTime = Date.now();
+var lastUpdateTime = Date.now();
+timeSinceLastUpdate = 0;
 function renderModels() {
-    updateGame();
+    var gUpdateTime = Date.now();
+    
+    timeSinceLastUpdate += Date.now() - lastUpdateTime;
+    var numUpdates = timeSinceLastUpdate / TIME_PER_UPDATE;
+    for (var i = 0; i < numUpdates; i++) {
+      updateGame();
+    }
+    timeSinceLastUpdate = timeSinceLastUpdate % TIME_PER_UPDATE;
+    
+    lastUpdateTime = Date.now();
+    gUpdateTime = Date.now() - gUpdateTime;
+    var renderUpdateTime = Date.now();
     gl.uniform3fv(lightPositionULoc,lightPosition);
       // construct the model transform matrix, based on model state
       function makeModelTransform(currModel) {
@@ -1674,8 +1703,10 @@ function renderModels() {
       mat4.multiply(pvMatrix,pvMatrix,vMatrix); // projection * view
       renderTriangles(false, true);
       renderTriangles(true, false);
+      renderUpdateTime = Date.now() - renderUpdateTime;
       endTime = Date.now();
       updateFPS((endTime - startTime));
+      updateTimers(gUpdateTime, renderUpdateTime);
       startTime = endTime;
       window.requestAnimationFrame(renderModels); // set up frame render callback
     
