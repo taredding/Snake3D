@@ -441,13 +441,6 @@ function loadModel(model) {
         var minCorner = vec3.fromValues(Number.MAX_VALUE,Number.MAX_VALUE,Number.MAX_VALUE); // other corner
         var whichSet = inputTriangles.length;
         inputTriangles.push(model);
-        textures.push(gl.createTexture());
-        gl.bindTexture(gl.TEXTURE_2D, textures[whichSet]);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 200, 0, 255]));
-        var myImage = new Image();
-        myImage.crossOrigin = "Anonymous";
-        myImage.src = BASE_URL + inputTriangles[whichSet].material.texture;
-        handleImageLoad(textures[whichSet], myImage);
         inputTriangles[whichSet].textureNumber = whichSet;
         inputTriangles[whichSet].realTextureNumber = whichSet;
         inputTriangles[whichSet].instanceNumber = whichSet;
@@ -590,13 +583,6 @@ function setUpBoard() {
   updateScore();
   // Load Background
   createModelInstance("background");
-  
-  createModelInstance("backwall");
-
-  createModelInstance("rightwall");
-  createModelInstance("leftwall");
-  createModelInstance("bottomwall");
-  createModelInstance("bottomwall2");
   gameover = createModelInstance("gameover");
   p1Win = createModelInstance("p1Win");
   p2Win = createModelInstance("p2Win");
@@ -1376,7 +1362,7 @@ function getModelByName(name) {
       return inputTriangles[i];
     }
   }
-  console.log("Error! Couldn't find model with name: " + name);
+  throw new Error("Couldn't find model with name: " + name);
 }
 
 
@@ -1603,7 +1589,7 @@ function renderModels() {
     timeSinceLastUpdate += Date.now() - lastUpdateTime;
     var numUpdates = timeSinceLastUpdate / TIME_PER_UPDATE;
     for (var i = 0; i < numUpdates; i++) {
-      //updateGame();
+      updateGame();
     }
     timeSinceLastUpdate = timeSinceLastUpdate % TIME_PER_UPDATE;
     
@@ -1821,18 +1807,43 @@ function loadModelFromObj(url, desc) {
   }
   console.log(model);
   loadModel(model);
+  return model;
 } 
+function addTexture(resourceURL) {
+  var whichSet = textures.length;
+  textures.push(gl.createTexture());
+  gl.bindTexture(gl.TEXTURE_2D, textures[whichSet]);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 200, 0, 255]));
+  var myImage = new Image();
+  myImage.crossOrigin = "Anonymous";
+  myImage.src = resourceURL;
+  handleImageLoad(textures[whichSet], myImage);
+}
+function loadResources() {
+  var resources = getJSONFile(BASE_URL + "resources.json", "resources");
+  
+  var modelInfo = resources;
+  
+  for (var i = 0; i < modelInfo.length; i++) {
+    var nextModelInfo = modelInfo[i];
+    var nextPos = inputTriangles.length;
+    
+    var nextModel = loadModelFromObj(BASE_URL + "models/" + nextModelInfo.model, nextModelInfo.name);
+    inputTriangles[nextPos].name = nextModelInfo.name;
+    inputTriangles[nextPos].material = nextModelInfo.material;
+    
+    addTexture(BASE_URL + "textures/" + nextModelInfo.material.texture);
+  }
+}
+
 
 function main() {
   setupWebGL(); // set up the webGL environment
   //loadModels(); // load in the models from tri file
   
-  loadModelFromObj("http://127.0.0.1/CG_PROG_5/models/snakehead.obj", "triangle");
-  createModelInstance("triangle");
-  var temp = createModelInstance("triangle");
-  temp.translation[1] = 1.0;
+  loadResources();
   
   setupShaders(); // setup the webGL shaders
-  //setUpBoard();
+  setUpBoard();
   renderModels(); // draw the triangles using webGL
 } // end main
