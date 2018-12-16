@@ -6,8 +6,8 @@ const GRID_HEIGHT = 20;
 var INPUT_TRIANGLES_URL = "http://127.0.0.1/CG_PROG_5/models.json"; // triangles file loc
 var BASE_URL = "http://127.0.0.1/CG_PROG_5/";
 
-INPUT_TRIANGLES_URL = "https://taredding.github.io/Snake3D/models.json"; // triangles file loc
-BASE_URL = "https://taredding.github.io/Snake3D/";
+//INPUT_TRIANGLES_URL = "https://taredding.github.io/Snake3D/models.json"; // triangles file loc
+//BASE_URL = "https://taredding.github.io/Snake3D/";
 
 var defaultEye = vec3.fromValues(0.5,0.5,-0.5); // default eye position in world space
 var defaultCenter = vec3.fromValues(0.5,0.5,0.5); // default view direction in world space
@@ -426,10 +426,11 @@ function setupWebGL() {
 } // end setupWebGL
 
 // read models in, load them into webgl buffers
-function loadModels() {
+function loadModels(model) {
+
     
     
-    inputTriangles = getJSONFile(INPUT_TRIANGLES_URL,"triangles"); // read in the triangle data
+    inputTriangles = model; // read in the triangle data
 
     try {
         if (inputTriangles == String.null)
@@ -551,6 +552,34 @@ function createModelInstance(name, i, j) {
   numTriangleSets = modelInstances.length;
   return set;
 }
+
+// get the file from the passed URL
+function getFile(url,descr) {
+    try {
+        if ((typeof(url) !== "string") || (typeof(descr) !== "string"))
+            throw "getJSONFile: parameter not a string";
+        else {
+            var httpReq = new XMLHttpRequest(); // a new http request
+            httpReq.open("GET",url,false); // init the request
+            httpReq.send(null); // send the request
+            var startTime = Date.now();
+            while ((httpReq.status !== 200) && (httpReq.readyState !== XMLHttpRequest.DONE)) {
+                if ((Date.now()-startTime) > 3000)
+                    break;
+            } // until its loaded or we time out after three seconds
+            if ((httpReq.status !== 200) || (httpReq.readyState !== XMLHttpRequest.DONE))
+                throw "Unable to open "+descr+" file!";
+            else
+                return httpReq.response; 
+        } // end if good params
+    } // end try    
+    
+    catch(e) {
+        console.log(e);
+        return(String.null);
+    }
+} // end get input json file
+
 
 function setUpBoard() {
   score1Multiplier = 1;
@@ -1589,7 +1618,7 @@ function renderModels() {
     timeSinceLastUpdate += Date.now() - lastUpdateTime;
     var numUpdates = timeSinceLastUpdate / TIME_PER_UPDATE;
     for (var i = 0; i < numUpdates; i++) {
-      updateGame();
+      //updateGame();
     }
     timeSinceLastUpdate = timeSinceLastUpdate % TIME_PER_UPDATE;
     
@@ -1746,11 +1775,79 @@ function updateScore() {
    }
  }
  
-function main() {
+function loadModelFromObj(url, desc) {
+  var str = getFile(url, desc) + "";
+  var file = str.split("\n");
   
+  var model = {};
+  model.name = desc;
+  model.material = {"ambient": [1.0,1.0,1.0], "diffuse": [1.0,1.0,1.0], "specular": [1.0,1.0,1.0], "n": 11, "alpha": 1.0, "texture": "snakeHeadUV.png"}
+  model.vertices = [];
+  model.normals = [];
+  model.uvs = [];
+  model.triangles = [];
+  model.v = [];
+  model.vn = [];
+  model.vt = [];
+  model.texture = "royal_wall.jpg";
+  
+  for (var i = 0; i < file.length; i++) {
+    var nextLine = file[i].split(" ");
+    
+    if (nextLine[0] === "v") {
+      var v = [];
+      v.push(parseFloat(nextLine[1]), parseFloat(nextLine[2]), parseFloat(nextLine[3]));
+      model.v.push(v);
+    }
+    else if(nextLine[0] === "vt") {
+      var vt = [];
+      vt.push(parseFloat(nextLine[1]), parseFloat(nextLine[2]));
+      model.vt.push(vt);
+    }
+    else if(nextLine[0] === "vn") {
+      var vn = [];
+      vn.push(parseFloat(nextLine[1]), parseFloat(nextLine[2]), parseFloat(nextLine[3]));
+      model.vn.push(vn);
+    }
+    else if(nextLine[0] === "f") {
+      var triangles = [];
+      for (var j = 1; j < 4; j++) { 
+        var vals = nextLine[j].split("/");
+        
+        var vIndex = parseInt(vals[0]) - 1;
+        var uvIndex = parseInt(vals[0]) - 1;
+        var nIndex = parseInt(vals[2]) - 1;
+        
+        if (!vIndex || !uvIndex || !nIndex) {
+          console.log("Indices: " + vIndex + " " + uvIndex + " " + nIndex);
+        }
+        
+        if (!model.v[vIndex] || !model.vt[uvIndex] || !model.vn[nIndex]) {
+          console.log("Missing something, look here: "  +"Indices: " + vIndex + " " + uvIndex + " " + nIndex + " vals: " + model.v[vIndex] + " " + model.vt[uvIndex] + " " + model.vn[nIndex]);
+        }
+        
+        model.vertices.push(model.v[vIndex]);
+        triangles.push(vIndex);
+        model.uvs.push(model.vt[uvIndex]);
+        model.normals.push(model.vn[nIndex]);
+      }
+      model.triangles.push(triangles);
+    }
+  }
+  console.log(model);
+  var temp = [];
+  temp.push(model);
+  loadModels(temp);
+} 
+
+function main() {
   setupWebGL(); // set up the webGL environment
-  loadModels(); // load in the models from tri file
+  //loadModels(); // load in the models from tri file
+  
+  loadModelFromObj("http://127.0.0.1/CG_PROG_5/models/snakehead.obj", "triangle");
+  createModelInstance("triangle");
+  
   setupShaders(); // setup the webGL shaders
-  setUpBoard();
+  //setUpBoard();
   renderModels(); // draw the triangles using webGL
 } // end main
