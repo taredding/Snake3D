@@ -72,28 +72,28 @@ var counter = 0;
 
 var is2Player = false;
 
-var audio_eat = new Audio('bite.wav');
+var audio_eat = new Audio('audio/bite.wav');
 audio_eat.muted = true;
 
-var audio_bump = new Audio('die.wav');
+var audio_bump = new Audio('audio/die.wav');
 audio_bump.volume = 0.5;
 audio_bump.muted = true;
 
-var music = new Audio('music.mp3');
+var music = new Audio('audio/music.mp3');
 music.volume = 0.1;
 music.loop = true;
 music.muted = true;
 
-var audio_clock = new Audio('clock.wav');
+var audio_clock = new Audio('audio/clock.wav');
 audio_clock.muted = true;
 
-audio_pup = new Audio('powerup.wav');
+audio_pup = new Audio('audio/powerup.wav');
 audio_pup.muted = true;
 
-audio_pdown = new Audio('powerdown.wav');
+audio_pdown = new Audio('audio/powerdown.wav');
 audio_pdown.muted = true;
 
-audio_explode = new Audio('explode.wav');
+audio_explode = new Audio('audio/explode.wav');
 audio_explode.muted = true;
 
 const TIME_PER_UPDATE = Math.floor(1000.0 / 60);
@@ -525,12 +525,24 @@ function createModelInstance(name, i, j) {
   set.material.specular = oldSet.material.specular.slice();
   set.yAxis = vec3.fromValues(0, 1, 0);
   set.xAxis = vec3.fromValues(1, 0, 0);
-  
+  set.scaling = vec3.clone(set.scaling);
   modelInstances.push(set);
   numTriangleSets = modelInstances.length;
   return set;
 }
 
+function scaleModel(model, x, y, z) {
+  vec3.set(model.scaling, x * model.scaling[0], y * model.scaling[1], z * model.scaling [2]);
+}
+function scaleUniform(model, val) {
+  scaleModel(model, val, val, val);
+}
+function rotateY (model, amount) {
+  var rotato = mat4.create();
+  mat4.fromRotation(rotato, amount, vec3.fromValues(0, 0, 1));
+  vec3.transformMat4(model.yAxis, model.yAxis, rotato);
+  vec3.transformMat4(model.xAxis,model.xAxis, rotato);
+}
 // get the file from the passed URL
 function getFile(url,descr) {
     try {
@@ -582,7 +594,10 @@ function setUpBoard() {
   p2Score = 0;
   updateScore();
   // Load Background
-  createModelInstance("background");
+  var temp = createModelInstance("background");
+  vec3.set(temp.translation, 0.5, 0.5, 0.1);
+  scaleUniform(temp, 1.0 / 0.025);
+  
   gameover = createModelInstance("gameover");
   p1Win = createModelInstance("p1Win");
   p2Win = createModelInstance("p2Win");
@@ -613,6 +628,9 @@ function setUpBoard() {
         next.material.specular[2] += ambFlex;
         var rand = Math.random()/15.0;
         next.translation[2] += rand;
+        if (i == 0 || i == GRID_WIDTH - 1) {
+          rotateY(next, Math.PI / 2);
+        }
       }
       grid[i].push(wall);
     }
@@ -620,8 +638,10 @@ function setUpBoard() {
   createModelInstance("wall", 5, 5);
   grid[5][5] = "wall";
   var temp = createModelInstance("wall", 5, 5);
-  temp.translation[2] -= 0.075;
-    var rotato = mat4.create();
+  temp.translation[2] -= 0.025;
+  temp.translation[1] -= 0.03;
+  temp.translation[0] -= 0.03;
+  var rotato = mat4.create();
   mat4.fromRotation(rotato, (Math.PI/4), vec3.fromValues(0, 0, 1));
   vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
   vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
@@ -629,17 +649,14 @@ function setUpBoard() {
   vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
   vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
   temp = createModelInstance("wall", 14, 14);
-  temp.translation[2] += 0.05;
   temp = createModelInstance("wall", 14, 14);
   grid[14][14] = "wall";
-  temp.translation[2] -= 0.05;
+  temp.translation[2] -= 0.1;
   
   temp = createModelInstance("wall", 8, 10);
-  temp.translation[2] += 0.05;
   grid[8][10] = "wall";
   
   temp = createModelInstance("wall", 8, 12);
-  temp.translation[2] += 0.05;
   grid[8][12] = "wall";
   
   temp = createModelInstance("wall", 8, 11);
@@ -647,17 +664,17 @@ function setUpBoard() {
   vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
   vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
   
-  mat4.fromRotation(rotato, (Math.PI/6), vec3.fromValues(1, 0, 0));
+  mat4.fromRotation(rotato, (Math.PI/7), vec3.fromValues(1, 0, 0));
   vec3.transformMat4(temp.yAxis, temp.yAxis, rotato);
   vec3.transformMat4(temp.xAxis, temp.xAxis, rotato);
   temp.translation[2] -= 0.025;
+  temp.translation[1] -= 0.006;
+  temp.translation[0] += 0.04;
   
   temp = createModelInstance("wall", 15, 3);
-  temp.translation[2] += 0.05;
   grid[15][3] = "wall";
   
   temp = createModelInstance("wall", 14, 2);
-  temp.translation[2] += 0.05;
   grid[14][2] = "wall";
   
   
@@ -824,6 +841,7 @@ function PowerUp(type, num, interval) {
 }
 
 
+
 function getRandGridLoc() {
   return 1 + Math.floor(Math.random() * (GRID_HEIGHT - 2));
 }
@@ -876,14 +894,15 @@ function Segment(i, j, isP, isP2, isHead, avoidSpawn) {
       }
     }
   }
-else {
-  if (this.isHead) {
-    this.model = createModelInstance("snakehead3", i, j);
-  }
   else {
-    this.model = createModelInstance("snake3", i, j);
+    if (this.isHead) {
+      this.model = createModelInstance("snakehead3", i, j);
+    }
+    else {
+      this.model = createModelInstance("snake3", i, j);
+    }
   }
-}
+  this.model.translation[2] = 0.07;
   this.model.isP = isP;
   this.child = null;
   this.explosionFactor = 1.0;
@@ -911,12 +930,9 @@ else {
     }
     this.canBuffer = false;
     if (this.model) {
-      vec3.set(this.model.yAxis, 0, 1, 0);
-      vec3.set(this.model.xAxis, 1, 0, 0);
-      var rotato = mat4.create();
-      mat4.fromRotation(rotato, (Math.PI/2)*this.nextDir, vec3.fromValues(0, 0, 1));
-      vec3.transformMat4(this.model.yAxis, this.model.yAxis, rotato);
-      vec3.transformMat4(this.model.xAxis, this.model.xAxis, rotato);
+      //vec3.set(this.model.yAxis, 0, 1, 0);
+      //vec3.set(this.model.xAxis, 1, 0, 0);
+      rotateY(this.model, (Math.PI/2)*(this.nextDir - this.curDir));
       
     }
   }
@@ -933,14 +949,10 @@ else {
     if (this.isExploding) {
       this.model.realTextureNumber = textures.length - 1 - (Math.floor(gameSpeed *this.frameNum) % 3);
       if (this.model.material.alpha > 0) {
-        var scaler = mat4.create();
         var prevScaling = 1.0/this.explosionFactor;
         this.explosionFactor += 0.1;
         var nextScaling = prevScaling * this.explosionFactor;
-        mat4.fromScaling(scaler,vec3.fromValues(nextScaling, nextScaling, nextScaling));
-        vec3.transformMat4(this.model.yAxis, this.model.yAxis, scaler);
-        vec3.transformMat4(this.model.xAxis, this.model.xAxis, scaler);
-        this.model.translation[2] = - 0.002;
+        scaleUniform(this.model, nextScaling);
       }
       if (this.child) {
         this.child.update();
@@ -949,11 +961,11 @@ else {
     if (!this.isAlive) { return;}
     //console.log(this.frameNum);
     gridToCoord(this.model.translation, this.i + (this.iDir * this.frameNum * DELTA), this.j + (this.jDir * this.frameNum * DELTA));
-    if (this.isHead) {
+    /**if (this.isHead) {
       var translate = this.model.translation;
       vec3.set(translate, translate[0] - this.jDir * 0.005, translate[1] - this.iDir * 0.002, translate[2]);
-    }
-    else {
+    }*/
+    if (!this.isHead) {
       var translate = this.model.translation;
       var slither = vec3.create();
       
@@ -1000,6 +1012,9 @@ else {
         this.child.bufferAction(this.curDir);
       }
     }
+    vec3.set(this.model.yAxis, 0, 1, 0);
+    vec3.set(this.model.xAxis, 1, 0, 0);
+    rotateY(this.model, (Math.PI/2)*(this.nextDir));
   }
   this.dirAvoidWall = function(dir) {
     var above = this.dangerAbove();
@@ -1042,8 +1057,6 @@ else {
       }
       return DOWN;
     }
-    
-    
     return dir;
     
   }
@@ -1221,6 +1234,7 @@ else {
     }
     else {
       this.child = new Segment(this.i - 1, this.j, this.isPlayer, this.isP2, false);
+      //rotateY(this.child.model, (Math.PI/2)*(this.curDir));
       this.child.childNum = this.childNum + 1;
       var childModel = this.child.model;
       if (this.isHead) {
@@ -1235,6 +1249,7 @@ else {
         }
         
         this.child.model = createModelInstance(modelName, this.child.i, this.child.j);
+        this.child.model.translation[2] = 0.07;
       }
       else {
         var temp = this.child.model;
@@ -1604,9 +1619,8 @@ function renderModels() {
           // move the model to the origin
           mat4.fromTranslation(mMatrix,vec3.negate(negCtr,currModel.center)); 
           
-          // scale for highlighting if needed
-          if (currModel.on)
-              mat4.multiply(mMatrix,mat4.fromScaling(temp,vec3.fromValues(1.2,1.2,1.2)),mMatrix); // S(1.2) * T(-ctr)
+          // scale
+          mat4.multiply(mMatrix,mat4.fromScaling(temp,currModel.scaling),mMatrix); // S(1.2) * T(-ctr)
           
           // rotate the model to current interactive orientation
           vec3.normalize(zAxis,vec3.cross(zAxis,currModel.xAxis,currModel.yAxis)); // get the new model z axis
@@ -1761,7 +1775,7 @@ function loadModelFromObj(url, desc) {
   model.vn = [];
   model.vt = [];
   model.texture = "royal_wall.jpg";
-  
+  model.scaling = vec3.fromValues(1.0, 1.0, 1.0);
   for (var i = 0; i < file.length; i++) {
     var nextLine = file[i].split(" ");
     
@@ -1807,6 +1821,7 @@ function loadModelFromObj(url, desc) {
   }
   console.log(model);
   loadModel(model);
+  scaleUniform(model, 0.025);
   return model;
 } 
 function addTexture(resourceURL) {
@@ -1831,7 +1846,7 @@ function loadResources() {
     var nextModel = loadModelFromObj(BASE_URL + "models/" + nextModelInfo.model, nextModelInfo.name);
     inputTriangles[nextPos].name = nextModelInfo.name;
     inputTriangles[nextPos].material = nextModelInfo.material;
-    
+    vec3.set(inputTriangles[nextPos].center, 0.0, 0.0, 0.0);
     addTexture(BASE_URL + "textures/" + nextModelInfo.material.texture);
   }
 }
